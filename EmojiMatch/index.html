@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji Match: Chaos Mode</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --card-bg: #16213e;
+            --accent: #e94560;
+            --text: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .stats {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* The Grid */
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .card {
+            aspect-ratio: 1 / 1;
+            background-color: var(--card-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            cursor: pointer;
+            border-radius: 8px;
+            user-select: none;
+            transition: transform 0.3s, background-color 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .card.flipped {
+            background-color: #0f3460;
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            background-color: #22a6b3;
+            cursor: default;
+            visibility: hidden; /* Optional: hide matched cards */
+        }
+
+        .chaos-warning {
+            color: var(--accent);
+            font-weight: bold;
+            height: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="stats">
+        <h1>Emoji Match</h1>
+        <p>Pairs Found: <span id="score">0</span> | Misses: <span id="misses">0</span></p>
+        <div class="chaos-warning" id="status"></div>
+    </div>
+
+    <div id="game-board"></div>
+
+    <button onclick="resetGame()">New Game</button>
+
+    <script>
+        const emojis = ['🎲', '🎯', '🧩', '🚀', '🌈', '👻', '🍕', '🐱'];
+        let cards = [...emojis, ...emojis];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let missCount = 0;
+        let canFlip = true;
+
+        const board = document.getElementById('game-board');
+        const statusText = document.getElementById('status');
+
+        function shuffle(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function createBoard() {
+            board.innerHTML = '';
+            shuffle(cards);
+            cards.forEach((emoji, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.emoji = emoji;
+                card.dataset.index = index;
+                card.addEventListener('click', flipCard);
+                board.appendChild(card);
+            });
+        }
+
+        function flipCard() {
+            if (!canFlip || this.classList.contains('flipped') || this.classList.contains('matched')) return;
+
+            this.textContent = this.dataset.emoji;
+            this.classList.add('flipped');
+            flippedCards.push(this);
+
+            if (flippedCards.length === 2) {
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            canFlip = false;
+            const [card1, card2] = flippedCards;
+
+            if (card1.dataset.emoji === card2.dataset.emoji) {
+                card1.classList.add('matched');
+                card2.classList.add('matched');
+                matchedPairs++;
+                document.getElementById('score').textContent = matchedPairs;
+                resetTurn();
+            } else {
+                missCount++;
+                document.getElementById('misses').textContent = missCount;
+                
+                // CHAOS LOGIC: Shuffle if 3 misses occur
+                if (missCount % 3 === 0) {
+                    statusText.textContent = "CHAOS! SHUFFLING BOARD...";
+                    setTimeout(chaosShuffle, 1000);
+                } else {
+                    setTimeout(() => {
+                        card1.textContent = '';
+                        card2.textContent = '';
+                        card1.classList.remove('flipped');
+                        card2.classList.remove('flipped');
+                        resetTurn();
+                    }, 1000);
+                }
+            }
+        }
+
+        function chaosShuffle() {
+            // Only shuffle cards that aren't matched yet
+            const unmatchedCards = Array.from(document.querySelectorAll('.card:not(.matched)'));
+            const emojisLeft = unmatchedCards.map(c => c.dataset.emoji);
+            shuffle(emojisLeft);
+
+            unmatchedCards.forEach((card, i) => {
+                card.dataset.emoji = emojisLeft[i];
+                card.textContent = '';
+                card.classList.remove('flipped');
+            });
+
+            statusText.textContent = "";
+            resetTurn();
+        }
+
+        function resetTurn() {
+            flippedCards = [];
+            canFlip = true;
+            if (matchedPairs === emojis.length) {
+                statusText.textContent = "You Won!";
+            }
+        }
+
+        function resetGame() {
+            matchedPairs = 0;
+            missCount = 0;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('misses').textContent = '0';
+            statusText.textContent = "";
+            createBoard();
+        }
+
+        createBoard();
+    </script>
+</body>
+</html>
